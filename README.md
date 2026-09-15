@@ -1,151 +1,151 @@
 # zshell
 
-Raccolta di piccoli script da riga di comando per macOS dedicati alla conversione di audio, immagini e PDF, oltre a semplici operazioni sui nomi dei file.
+A collection of small command-line scripts for macOS dedicated to converting audio, images, and PDFs, plus simple file-name operations.
 
-Gli script sono indipendenti: non esistono un processo di build, un package manager o una configurazione globale del progetto. Ogni utility può essere eseguita direttamente dalla directory del repository.
+The scripts are standalone: there is no build process, package manager, or global project configuration. Every utility can be run directly from the repository directory.
 
-## Script disponibili
+## Available scripts
 
-| Script | Funzione | Output predefinito | Dipendenze |
+| Script | Purpose | Default output | Dependencies |
 | --- | --- | --- | --- |
-| `flac2mp3.sh` | Converte uno o più FLAC in MP3 e conserva metadati e copertine compatibili | Accanto al FLAC, con estensione `.mp3` | `ffmpeg` |
-| `mkv2mp3.sh` | Estrae la prima traccia audio da uno o più MKV e la codifica in MP3 | Accanto all’MKV, con estensione `.mp3` | `ffmpeg` |
-| `png2webp.sh` | Converte immagini PNG in WebP con qualità 80 | Accanto al PNG, con estensione `.webp` | `cwebp` |
-| `jpg2webp.sh` | Converte immagini JPG/JPEG in WebP con qualità 80 | Accanto al JPG/JPEG, con estensione `.webp` | `cwebp` |
-| `luma2alpha.sh` | Usa la luminanza invertita e ad alto contrasto come canale alpha | `<nome>_alpha.png` | ImageMagick |
-| `flatpdf.sh` | Rasterizza e ricomprime un PDF alla risoluzione scelta | `<nome>_optimized.pdf` | Ghostscript, `img2pdf` |
-| `prepend.sh` | Aggiunge un prefisso ai nomi di più file | File rinominati sul posto | Utility standard di macOS |
+| `flac2mp3.sh` | Converts one or more FLAC files to MP3 and preserves compatible metadata and cover art | Next to the FLAC, with a `.mp3` extension | `ffmpeg` |
+| `mkv2mp3.sh` | Extracts the first audio track from one or more MKV files and encodes it to MP3 | Next to the MKV, with a `.mp3` extension | `ffmpeg` |
+| `png2webp.sh` | Converts PNG images to WebP with quality 80 | Next to the PNG, with a `.webp` extension | `cwebp` |
+| `jpg2webp.sh` | Converts JPG/JPEG images to WebP with quality 80 | Next to the JPG/JPEG, with a `.webp` extension | `cwebp` |
+| `luma2alpha.sh` | Uses inverted, high-contrast luminance as the alpha channel | `<name>_alpha.png` | ImageMagick |
+| `flatpdf.sh` | Rasterizes and recompresses a PDF at the chosen resolution | `<name>_optimized.pdf` | Ghostscript, `img2pdf` |
+| `prepend.sh` | Adds a prefix to the names of multiple files | Files renamed in place | Standard macOS utilities |
 
-## Installazione
+## Installation
 
-Su macOS, tutte le dipendenze possono essere installate con Homebrew:
+On macOS, all dependencies can be installed with Homebrew:
 
 ```bash
 brew install ffmpeg webp imagemagick ghostscript img2pdf
 ```
 
-Gli script nel repository sono già eseguibili. In caso contrario:
+The scripts in the repository are already executable. If they are not:
 
 ```bash
 chmod +x ./*.sh
 ```
 
-## Conversione audio
+## Audio conversion
 
-### FLAC in MP3
+### FLAC to MP3
 
 ```bash
-./flac2mp3.sh brano.flac
+./flac2mp3.sh track.flac
 ./flac2mp3.sh *.flac
 ./flac2mp3.sh --quality 0 *.flac
 ./flac2mp3.sh --bitrate 320k *.flac
 ./flac2mp3.sh --output-dir ./mp3 *.flac
 ```
 
-### MKV in MP3
+### MKV to MP3
 
-`mkv2mp3.sh` usa la prima traccia audio dell’MKV, omette il video e conserva i metadati globali compatibili con MP3.
+`mkv2mp3.sh` uses the first audio track of the MKV, omits the video, and preserves global metadata compatible with MP3.
 
 ```bash
-./mkv2mp3.sh registrazione.mkv
+./mkv2mp3.sh recording.mkv
 ./mkv2mp3.sh *.mkv
 ./mkv2mp3.sh --quality 0 *.mkv
 ./mkv2mp3.sh --bitrate 320k --output-dir ./audio *.mkv
 ```
 
-Le opzioni condivise dai due convertitori sono:
+The options shared by the two converters are:
 
-| Opzione | Significato |
+| Option | Meaning |
 | --- | --- |
-| `-q N`, `--quality N` | Qualità VBR da 0, migliore, a 9, più compatta. Il valore predefinito è 2 |
-| `-b RATE`, `--bitrate RATE` | Bitrate costante, per esempio `192k` o `320k` |
-| `-o DIR`, `--output-dir DIR` | Directory di destinazione; viene creata se non esiste |
-| `-f`, `--force` | Sovrascrive gli MP3 già presenti |
-| `--delete-original`, `--DO` | Elimina la sorgente soltanto dopo una conversione riuscita |
-| `-h`, `--help` | Mostra la guida completa |
+| `-q N`, `--quality N` | VBR quality from 0, best, to 9, smallest. The default value is 2 |
+| `-b RATE`, `--bitrate RATE` | Constant bitrate, for example `192k` or `320k` |
+| `-o DIR`, `--output-dir DIR` | Destination directory; it is created if it does not exist |
+| `-f`, `--force` | Overwrites MP3s that already exist |
+| `--delete-original`, `--DO` | Deletes the source only after a successful conversion |
+| `-h`, `--help` | Shows the full help |
 
-È possibile anche passare come ultimo argomento una directory di destinazione già esistente:
+You can also pass an already existing destination directory as the last argument:
 
 ```bash
-./mkv2mp3.sh *.mkv ./audio_esistente
+./mkv2mp3.sh *.mkv ./existing_audio
 ```
 
-I convertitori audio scrivono prima in un file temporaneo e lo spostano nella destinazione soltanto al termine. Senza `--force`, un MP3 già esistente viene ignorato. Con `--delete-original`, file saltati o conversioni fallite non vengono eliminati.
+The audio converters first write to a temporary file and move it to the destination only once finished. Without `--force`, an MP3 that already exists is skipped. With `--delete-original`, skipped files or failed conversions are not deleted.
 
-## Conversione immagini
+## Image conversion
 
-### PNG o JPG in WebP
+### PNG or JPG to WebP
 
 ```bash
 ./png2webp.sh *.png
-./png2webp.sh *.png ./webp_esistenti
+./png2webp.sh *.png ./existing_webp
 
-./jpg2webp.sh foto.jpg foto.jpeg
-./jpg2webp.sh *.jpg ./webp_esistenti
+./jpg2webp.sh photo.jpg photo.jpeg
+./jpg2webp.sh *.jpg ./existing_webp
 ```
 
-L’ultimo argomento viene interpretato come destinazione soltanto se è una directory già esistente. La qualità WebP è attualmente fissata a 80.
+The last argument is interpreted as a destination only if it is an already existing directory. The WebP quality is currently fixed at 80.
 
-### Luminanza nel canale alpha
+### Luminance into the alpha channel
 
 ```bash
-./luma2alpha.sh immagine.png
+./luma2alpha.sh image.png
 ```
 
-Lo script aumenta fortemente il contrasto, inverte la luminanza e la usa come trasparenza: le aree chiare diventano più trasparenti, quelle scure più opache.
+The script greatly increases contrast, inverts the luminance, and uses it as transparency: light areas become more transparent, dark areas more opaque.
 
-## Ottimizzazione PDF
+## PDF optimization
 
 ```bash
-./flatpdf.sh documento.pdf
-./flatpdf.sh documento.pdf 200
+./flatpdf.sh document.pdf
+./flatpdf.sh document.pdf 200
 ```
 
-Il secondo argomento è la risoluzione in DPI e vale 150 per impostazione predefinita. Il PDF viene rasterizzato pagina per pagina e poi ricostruito con il profilo Ghostscript `/ebook`.
+The second argument is the resolution in DPI and defaults to 150. The PDF is rasterized page by page and then rebuilt with the Ghostscript `/ebook` profile.
 
-> La rasterizzazione appiattisce testo, grafica vettoriale, link e altri elementi interattivi. Conservare sempre il PDF originale.
+> Rasterization flattens text, vector graphics, links, and other interactive elements. Always keep the original PDF.
 
-## Aggiunta di un prefisso
+## Adding a prefix
 
-Il prefisso è sempre l’ultimo argomento:
+The prefix is always the last argument:
 
 ```bash
 ./prepend.sh *.webp "IMG_"
 ```
 
-Usare `prepend.sh` dalla directory che contiene i file e passare nomi relativi semplici. Lo script rinomina i file sul posto e non offre una modalità di anteprima.
+Run `prepend.sh` from the directory containing the files and pass simple relative names. The script renames files in place and does not offer a preview mode.
 
 ## Finder Quick Actions
 
-Gli script possono essere richiamati da Automator tramite un’azione **Esegui script shell**, usando `/bin/bash` e passando l’input come argomenti.
+The scripts can be invoked from Automator through a **Run Shell Script** action, using `/bin/bash` and passing the input as arguments.
 
-Su questa macchina le azioni installate si trovano in:
+On this machine the installed actions are located in:
 
 ```text
 ~/Library/Services/
 ```
 
-Le workflow di Automator non sono versionate in questo repository: contengono percorsi locali assoluti verso gli script. Dopo aver aggiunto o modificato una Quick Action, abilitarla da **Finder → Quick Actions → Customize…** oppure dalle impostazioni delle estensioni di macOS.
+The Automator workflows are not versioned in this repository: they contain local absolute paths to the scripts. After adding or modifying a Quick Action, enable it from **Finder → Quick Actions → Customize…** or from the macOS extensions settings.
 
-La Quick Action `Convert MKV to MP3` accetta genericamente elementi del Finder perché macOS Sonoma può non associare gli MKV a un tipo video standard; prima di eseguire `ffmpeg`, la workflow verifica comunque che ogni file abbia estensione `.mkv`.
+The `Convert MKV to MP3` Quick Action accepts Finder items generically because macOS Sonoma may not associate MKVs with a standard video type; before running `ffmpeg`, the workflow still verifies that every file has a `.mkv` extension.
 
-## Sicurezza e sovrascrittura
+## Safety and overwriting
 
-- Usare `--delete-original` soltanto quando si desidera davvero rimuovere le sorgenti audio o video.
-- `flac2mp3.sh` e `mkv2mp3.sh` proteggono gli output esistenti salvo uso esplicito di `--force`.
-- Gli script WebP, `luma2alpha.sh`, `flatpdf.sh` e `prepend.sh` non implementano la stessa protezione completa: controllare in anticipo i nomi di destinazione.
-- Racchiudere tra virgolette i percorsi contenenti spazi.
+- Use `--delete-original` only when you really want to remove the audio or video sources.
+- `flac2mp3.sh` and `mkv2mp3.sh` protect existing outputs unless `--force` is used explicitly.
+- The WebP scripts, `luma2alpha.sh`, `flatpdf.sh`, and `prepend.sh` do not implement the same full protection: check the destination names in advance.
+- Enclose paths containing spaces in quotes.
 
-## Verifica rapida
+## Quick verification
 
-Non è presente una test suite automatica. È possibile verificare almeno la sintassi con:
+There is no automated test suite. You can at least verify the syntax with:
 
 ```bash
 bash -n flac2mp3.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh png2webp.sh prepend.sh
 zsh -n flatpdf.sh
 ```
 
-Per la guida specifica di uno script che la supporta:
+For the specific help of a script that supports it:
 
 ```bash
 ./mkv2mp3.sh --help

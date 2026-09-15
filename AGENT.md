@@ -1,53 +1,53 @@
-# Istruzioni per gli agenti
+# Agent instructions
 
-## Ambito del repository
+## Repository scope
 
-Questo repository contiene utility shell indipendenti per macOS. Non esistono build system, dipendenze vendorizzate o test automatici. Le modifiche devono rimanere piccole, leggibili e coerenti con lo scopo del singolo script.
+This repository contains standalone shell utilities for macOS. There is no build system, no vendored dependency, and no automated test. Changes must stay small, readable, and consistent with the purpose of the individual script.
 
-Queste istruzioni si applicano all’intera directory del progetto.
+These instructions apply to the entire project directory.
 
-## Mappa del progetto
+## Project map
 
-- `flac2mp3.sh`: conversione FLAC → MP3 con `ffmpeg`, output temporaneo sicuro e cancellazione opzionale della sorgente.
-- `mkv2mp3.sh`: estrazione della prima traccia audio MKV → MP3 con le stesse garanzie di `flac2mp3.sh`.
-- `png2webp.sh` e `jpg2webp.sh`: conversione immagini con `cwebp`, qualità fissa a 80.
-- `luma2alpha.sh`: composizione del canale alpha con ImageMagick.
-- `flatpdf.sh`: rasterizzazione e ricompressione PDF; è l’unico script Zsh.
-- `prepend.sh`: rinomina distruttiva sul posto aggiungendo un prefisso.
-- `README.md`: documentazione utente e panoramica delle dipendenze.
+- `flac2mp3.sh`: FLAC → MP3 conversion with `ffmpeg`, safe temporary output, and optional deletion of the source.
+- `mkv2mp3.sh`: extraction of the first MKV audio track → MP3 with the same guarantees as `flac2mp3.sh`.
+- `png2webp.sh` and `jpg2webp.sh`: image conversion with `cwebp`, quality fixed at 80.
+- `luma2alpha.sh`: alpha channel compositing with ImageMagick.
+- `flatpdf.sh`: PDF rasterization and recompression; it is the only Zsh script.
+- `prepend.sh`: destructive in-place rename by adding a prefix.
+- `README.md`: user documentation and dependency overview.
 
-## Regole di lavoro
+## Working rules
 
-1. Controllare sempre `git status --short` prima di modificare file. Il worktree può contenere file non tracciati o modifiche dell’utente: non eliminarli, non ripristinarli e non includerli accidentalmente in riscritture estese.
-2. Conservare il bit eseguibile degli script.
-3. Usare `/bin/bash` per gli script Bash e `/bin/zsh` per `flatpdf.sh`. Non introdurre funzionalità di Bash 4+: macOS distribuisce ancora una versione Bash precedente.
-4. Quotare sempre espansioni e percorsi che possono contenere spazi. Preferire array per gli elenchi di file.
-5. Verificare esplicitamente le dipendenze esterne con `command -v` e produrre errori comprensibili.
-6. Non aggiungere nuove dipendenze se un’utility già disponibile nel progetto risolve il problema.
-7. Mantenere in inglese help, messaggi CLI e commenti tecnici esistenti, salvo richiesta esplicita di localizzazione.
-8. Evitare refactoring trasversali non richiesti: gli script hanno età e stili differenti e devono poter continuare a funzionare autonomamente.
+1. Always check `git status --short` before modifying files. The worktree may contain untracked files or user changes: do not delete them, do not restore them, and do not accidentally include them in broad rewrites.
+2. Preserve the executable bit of the scripts.
+3. Use `/bin/bash` for the Bash scripts and `/bin/zsh` for `flatpdf.sh`. Do not introduce Bash 4+ features: macOS still ships an earlier version of Bash.
+4. Always quote expansions and paths that may contain spaces. Prefer arrays for file lists.
+5. Explicitly verify external dependencies with `command -v` and produce understandable errors.
+6. Do not add new dependencies if a utility already available in the project solves the problem.
+7. Keep help text, CLI messages, and existing technical comments in English, unless localization is explicitly requested.
+8. Avoid unrequested cross-cutting refactoring: the scripts differ in age and style and must be able to keep working independently.
 
-## Invarianti di sicurezza
+## Safety invariants
 
-- Una conversione non deve distruggere un output valido o lasciare un file parziale.
-- Per `flac2mp3.sh` e `mkv2mp3.sh`, conservare il flusso file temporaneo → verifica successo → spostamento finale.
-- Non modificare il comportamento predefinito che salta gli MP3 esistenti. La sovrascrittura deve richiedere `--force`.
-- La sorgente deve essere eliminata soltanto dopo una conversione e uno spostamento riusciti, e soltanto con `--delete-original` o `--DO`.
-- Un errore, un file saltato o un input senza traccia audio non deve causare la cancellazione della sorgente.
-- Per operazioni distruttive su file reali, usare fixture temporanee e non contenuti dell’utente.
-- `flatpdf.sh` rasterizza il documento: non descrivere il risultato come equivalente semanticamente all’originale.
+- A conversion must not destroy a valid output or leave a partial file behind.
+- For `flac2mp3.sh` and `mkv2mp3.sh`, preserve the temporary file → success check → final move flow.
+- Do not change the default behavior that skips existing MP3s. Overwriting must require `--force`.
+- The source must be deleted only after a successful conversion and move, and only with `--delete-original` or `--DO`.
+- An error, a skipped file, or an input with no audio track must not cause deletion of the source.
+- For destructive operations on real files, use temporary fixtures and not user content.
+- `flatpdf.sh` rasterizes the document: do not describe the result as semantically equivalent to the original.
 
-## Convenzioni CLI
+## CLI conventions
 
-- Supportare nomi di file con spazi.
-- Se uno script accetta più file, continuare a elaborare gli altri input dopo un errore recuperabile e restituire un codice diverso da zero se almeno uno fallisce.
-- Gli output diagnostici devono indicare chiaramente input, destinazione e motivo dell’errore.
-- Le opzioni corte e lunghe già pubblicate sono API: non rimuoverle o cambiarne il significato senza una richiesta esplicita.
-- Aggiornare `--help` e `README.md` quando cambia un’interfaccia utente.
+- Support filenames containing spaces.
+- If a script accepts multiple files, keep processing the other inputs after a recoverable error and return a non-zero exit code if at least one fails.
+- Diagnostic output must clearly state the input, the destination, and the reason for the error.
+- Already-published short and long options are API: do not remove them or change their meaning without an explicit request.
+- Update `--help` and `README.md` when a user interface changes.
 
-## Validazione richiesta
+## Required validation
 
-Dopo ogni modifica eseguire almeno:
+After every change, run at least:
 
 ```bash
 bash -n flac2mp3.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh png2webp.sh prepend.sh
@@ -55,30 +55,30 @@ zsh -n flatpdf.sh
 git diff --check
 ```
 
-Per lo script modificato aggiungere una prova funzionale proporzionata al rischio:
+For the modified script, add a functional test proportionate to the risk:
 
-- Audio/video: creare una fixture breve in una directory ottenuta con `mktemp -d`, eseguire la conversione e ispezionare il risultato con `ffprobe`.
-- Immagini: creare una piccola fixture temporanea, verificare formato, dimensioni e presenza del canale alpha quando rilevante.
-- PDF: usare un PDF temporaneo di poche pagine e verificare numero di pagine e apertura dell’output.
-- Rinomina: lavorare esclusivamente su copie temporanee e controllare i nomi finali.
+- Audio/video: create a short fixture in a directory obtained with `mktemp -d`, run the conversion, and inspect the result with `ffprobe`.
+- Images: create a small temporary fixture, verify format, dimensions, and the presence of the alpha channel where relevant.
+- PDF: use a temporary PDF of a few pages and verify the page count and that the output opens.
+- Rename: work exclusively on temporary copies and check the final names.
 
-Testare inoltre i casi di errore pertinenti: dipendenza mancante, estensione errata, output già esistente, file senza audio e percorsi contenenti spazi. Rimuovere le fixture create al termine.
+Also test the relevant error cases: missing dependency, wrong extension, output already existing, file with no audio, and paths containing spaces. Remove the fixtures you created when you are done.
 
-## Automator e Finder
+## Automator and Finder
 
-Le Quick Actions sono installate in `~/Library/Services` e non fanno parte del repository. Modificarle soltanto se la richiesta include esplicitamente l’integrazione Finder.
+Quick Actions are installed in `~/Library/Services` and are not part of the repository. Modify them only if the request explicitly includes Finder integration.
 
-Le workflow locali richiamano gli script mediante percorsi assoluti: se il repository viene spostato, aggiornare anche il comando Automator. Usare `/bin/bash` e configurare **Pass input: as arguments**.
+Local workflows call the scripts through absolute paths: if the repository is moved, update the Automator command too. Use `/bin/bash` and configure **Pass input: as arguments**.
 
-Su macOS Sonoma un MKV può non essere classificato come `public.movie`. La workflow `Convert MKV to MP3` usa quindi `public.item` per essere visibile, ma deve conservare il controllo interno case-insensitive dell’estensione `.mkv`.
+On macOS Sonoma an MKV may not be classified as `public.movie`. The `Convert MKV to MP3` workflow therefore uses `public.item` to remain visible, but it must keep the internal case-insensitive check of the `.mkv` extension.
 
-Quando si abilita una Service come Quick Action, verificare entrambe le condizioni:
+When you enable a Service as a Quick Action, verify both conditions:
 
-- la workflow è presente nel registro `pbs`;
-- in `NSServicesStatus`, i valori `ContextMenu`, `FinderPreview`, `ServicesMenu` e `TouchBar` sono interi `1`, non stringhe `"1"`.
+- the workflow is present in the `pbs` registry;
+- in `NSServicesStatus`, the `ContextMenu`, `FinderPreview`, `ServicesMenu`, and `TouchBar` values are integers `1`, not the strings `"1"`.
 
-Dopo un aggiornamento, ricaricare la cache dei Services e rilanciare Finder. Preferire l’interfaccia **Quick Actions → Customize…** quando disponibile; non cambiare associazioni di apertura dei file, perché sono indipendenti dalle Quick Actions.
+After an update, reload the Services cache and relaunch Finder. Prefer the **Quick Actions → Customize…** interface when available; do not change file opening associations, because they are independent of Quick Actions.
 
-## Consegna
+## Delivery
 
-Riassumere i file modificati, i test eseguiti e gli eventuali rischi residui. Non dichiarare completata una modifica a una Quick Action soltanto perché appare sotto **Services**: su Sonoma va verificata anche la sua presenza nel sottomenu **Quick Actions**.
+Summarize the modified files, the tests run, and any remaining risks. Do not declare a Quick Action change complete just because it appears under **Services**: on Sonoma you must also verify its presence in the **Quick Actions** submenu.
