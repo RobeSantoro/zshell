@@ -8,13 +8,16 @@
 # also be run by hand.
 #
 # Compared with putting `ollama launch dsh` straight into the plist, this
-# wrapper adds three things launchd cannot express:
+# wrapper adds four things launchd cannot express:
 #   1. a PATH that contains node/dsh (fnm globals) - launchd jobs otherwise get
 #      only /usr/bin:/bin:/usr/sbin:/sbin and `ollama launch` would not find dsh;
 #   2. a guard that stands down when DSH web is already listening, so a
 #      hand-started instance and the login item never fight over the port;
 #   3. a short wait for the Ollama server, which is itself a login item and may
-#      still be coming up.
+#      still be coming up;
+#   4. the flags a headless launch requires: --model, because DSH refuses to
+#      start without a terminal unless a model is named, and --no-open, so no
+#      browser window opens at login.
 
 set -uo pipefail
 
@@ -25,6 +28,9 @@ OLLAMA_BIN="${OLLAMA_BIN:-/usr/local/bin/ollama}"
 OLLAMA_API="${OLLAMA_API:-http://127.0.0.1:11434}"
 DSH_WEB_PORT="${DSH_WEB_PORT:-3080}"
 DSH_WORKDIR="${DSH_WORKDIR:-$HOME}"
+# Empty means "use whatever model the dsh integration is already configured
+# with", which is resolved below.
+OLLAMA_DSH_MODEL="${OLLAMA_DSH_MODEL:-}"
 
 # --- PATH -------------------------------------------------------------------
 # fnm's "default" alias keeps pointing at a valid Node across upgrades, so try
@@ -33,20 +39,20 @@ DSH_WORKDIR="${DSH_WORKDIR:-$HOME}"
 # interactive shell and disappear with it.
 fnm_root="${FNM_DIR:-$HOME/.local/share/fnm}"
 node_bin=""
-if [[ -x "$fnm_root/aliases/default/bin/dsh" ]]; then
+if [ -x "$fnm_root/aliases/default/bin/dsh" ]; then
   node_bin="$fnm_root/aliases/default/bin"
 else
   for candidate in "$fnm_root"/node-versions/*/installation/bin; do
-    if [[ -x "$candidate/dsh" ]]; then
+    if [ -x "$candidate/dsh" ]; then
       node_bin="$candidate"
     fi
   done
 fi
-[[ -n "$node_bin" ]] || log "warning: no dsh executable found under $fnm_root"
+[ -n "$node_bin" ] || log "warning: no dsh executable found under $fnm_root"
 
 export PATH="${node_bin:+$node_bin:}/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-if [[ ! -x "$OLLAMA_BIN" ]]; then
+if [ ! -x "$OLLAMA_BIN" ]; then
   log "error: $OLLAMA_BIN is missing or not executable"
   exit 1
 fi
@@ -62,6 +68,19 @@ if /usr/bin/nc -z 127.0.0.1 "$DSH_WEB_PORT" >/dev/null 2>&1; then
   exit 0
 fi
 
+# --- Model for a headless launch ---------------------------------------------
+# Without a terminal, `ollama launch` refuses to pick a model on its own:
+#   headless --yes launch for dsh requires --model <model>
+# Reuse the model already configured for the integration, so the login item
+# follows whatever was last selected interactively.
+if [ -z "$OLLAMA_DSH_MODEL" ] && [ -r "$HOME/.ollama/config.json" ]; then
+  OLLAMA_DSH_MODEL="$(/usr/bin/plutil -extract integrations.dsh.models.0 raw -o - "$HOME/.ollama/config.json" 2>/dev/null)"
+fi
+if [ -z "$OLLAMA_DSH_MODEL" ]; then
+  log "error: no dsh model configured; run 'ollama launch dsh --model <model>' once, or set OLLAMA_DSH_MODEL"
+  exit 1
+fi
+
 # --- Wait briefly for the Ollama server --------------------------------------
 # Not fatal if it never shows up: DSH boots fine and Ollama is retried per
 # request, and KeepAlive restarts us if `ollama launch` itself fails.
@@ -75,8 +94,10 @@ done
 # DSH uses the working directory as its workspace.
 cd "$DSH_WORKDIR" 2>/dev/null || { log "warning: cannot cd to $DSH_WORKDIR"; cd "$HOME" || exit 1; }
 
-log "starting: $OLLAMA_BIN launch dsh -y (cwd=$PWD)"
+log "starting: $OLLAMA_BIN launch dsh --model $OLLAMA_DSH_MODEL -y -- --no-open (cwd=$PWD)"
 
 # -y answers confirmation prompts, because a launchd job has no terminal to
-# prompt on. Remove it if you would rather the job fail than auto-confirm.
-exec "$OLLAMA_BIN" launch dsh -y </dev/null
+# prompt on. --no-open keeps the login silent; the authenticated URL is still
+# printed and lands in this job's log. Note that the URL carries a fresh
+# per-process token, while the browser cookie it grants lasts 30 days.
+exec "$OLLAMA_BIN" launch dsh --model "$OLLAMA_DSH_MODEL" -y -- --no-open </dev/null

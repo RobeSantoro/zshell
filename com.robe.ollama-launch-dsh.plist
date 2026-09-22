@@ -4,7 +4,7 @@
 <dict>
 	<!-- Runs `ollama launch dsh` at login with no Terminal window.
 	     Installed as ~/Library/LaunchAgents/com.robe.ollama-launch-dsh.plist
-	     by install-ollama-dsh-login.sh. -->
+	     by ollama-dsh-login.sh. -->
 	<key>Label</key>
 	<string>com.robe.ollama-launch-dsh</string>
 

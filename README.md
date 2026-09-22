@@ -16,7 +16,7 @@ The scripts are standalone: there is no build process, package manager, or globa
 | `flatpdf.sh` | Rasterizes and recompresses a PDF at the chosen resolution | `<name>_optimized.pdf` | Ghostscript, `img2pdf` |
 | `prepend.sh` | Adds a prefix to the names of multiple files | Files renamed in place | Standard macOS utilities |
 | `ollama-launch-dsh.sh` | Starts `ollama launch dsh` (DeepSeek Harness web) with no Terminal window; it is the program the LaunchAgent runs | - | Ollama, `dsh` from fnm |
-| `install-ollama-dsh-login.sh` | Installs or removes the launch-at-login item for DeepSeek Harness | - | Standard macOS utilities |
+| `ollama-dsh-login.sh` | Manages the launch-at-login item for DeepSeek Harness: install, uninstall, status, restart, open | - | Standard macOS utilities |
 
 ## Installation
 
@@ -133,29 +133,64 @@ The `Convert MKV to MP3` Quick Action accepts Finder items generically because m
 
 ## DeepSeek Harness at login
 
-`install-ollama-dsh-login.sh` installs a LaunchAgent that runs `ollama launch dsh`
+`ollama-dsh-login.sh` manages the LaunchAgent that runs `ollama launch dsh`
 when you log in. Because it is a LaunchAgent rather than a login item, it starts
 in the background with no Terminal window and no Dock icon, and it appears in
 **System Settings → General → Login Items & Extensions** under **Allow in the
 Background**.
 
 ```bash
-./install-ollama-dsh-login.sh install     # install and load (default)
-./install-ollama-dsh-login.sh status      # launchd state, port, log
-./install-ollama-dsh-login.sh restart     # stop and start again
-./install-ollama-dsh-login.sh uninstall   # stop and remove
+./ollama-dsh-login.sh install     # install and load (default)
+./ollama-dsh-login.sh status      # launchd state, port, log
+./ollama-dsh-login.sh open        # re-authenticate a browser window
+./ollama-dsh-login.sh restart     # stop and start again
+./ollama-dsh-login.sh uninstall   # stop and remove
 ```
 
 The agent runs `ollama-launch-dsh.sh`, a wrapper rather than the bare command,
 because launchd starts jobs with a minimal `PATH`: `dsh` is installed in the fnm
 global bin and would not be found. The wrapper also stands down when DSH web is
 already listening on port 3080, so a manually started instance and the login item
-never fight over the port; waits briefly for the Ollama server, which is itself a
-login item; and passes `-y`, since a background job has no terminal to answer
-prompts on.
+never fight over the port; and it waits briefly for the Ollama server, which is
+itself a login item.
+
+A background job has no terminal, so the launch must also be headless:
+
+- `--model` is required. `ollama launch` refuses to choose a model without an
+  interactive terminal; the wrapper reuses the model configured for the `dsh`
+  integration in `~/.ollama/config.json`, and `OLLAMA_DSH_MODEL` overrides it.
+- `--no-open` stops DSH from opening the default browser at login. The
+  authenticated URL is still printed, so it appears in the log.
+- `-y` answers any remaining confirmation prompt.
 
 DSH uses the `WorkingDirectory` of `com.robe.ollama-launch-dsh.plist` as its
-workspace, and writes its log to `~/Library/Logs/ollama-launch-dsh.log`.
+workspace, and writes its log to `~/Library/Logs/ollama-launch-dsh.log`. When the
+GUI is unreachable, that log is the first place to look:
+
+```bash
+./ollama-dsh-login.sh status
+grep 'dsh web:' ~/Library/Logs/ollama-launch-dsh.log | tail -1
+```
+
+The `dsh web:` line carries a fresh per-process token; opening it grants a
+30-day browser cookie, after which the plain `http://127.0.0.1:3080/` works. The
+signing secret is persisted in `~/.dsh/.credentials.yaml`, so that cookie
+survives restarts -- it is the secret, not the token, that makes the cookie
+durable.
+
+Because `--no-open` suppresses the browser handoff, nothing refreshes that
+cookie. After 30 days, after clearing cookies, or when a window kept its old
+connection state across a restart, the GUI answers `dsh web authentication
+required`. Hand the current URL to the browser again with:
+
+```bash
+./ollama-dsh-login.sh open
+```
+
+It reads the latest `dsh web:` URL from the log and opens it in the Chrome App
+shortcut (falling back to the default browser). Cookies belong to one browser
+profile, so the shortcut and the browser that authenticates are not
+interchangeable.
 
 ## Safety and overwriting
 
@@ -169,7 +204,7 @@ workspace, and writes its log to `~/Library/Logs/ollama-launch-dsh.log`.
 There is no automated test suite. You can at least verify the syntax with:
 
 ```bash
-bash -n flac2mp3.sh install-ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh
+bash -n flac2mp3.sh ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh
 zsh -n flatpdf.sh
 ```
 

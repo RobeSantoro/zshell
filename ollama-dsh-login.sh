@@ -1,15 +1,16 @@
 #!/bin/bash
 #
-# install-ollama-dsh-login.sh
+# ollama-dsh-login.sh
 #
-# Installs / removes a silent login item that runs `ollama launch dsh` at login
-# on macOS. "Silent" means a LaunchAgent: it runs as you in the background with
-# no Terminal window and no Dock icon.
+# Manages the silent login item that runs `ollama launch dsh` at login on
+# macOS. "Silent" means a LaunchAgent: it runs as you in the background with no
+# Terminal window and no Dock icon.
 #
-#   ./install-ollama-dsh-login.sh install     # install and load (default)
-#   ./install-ollama-dsh-login.sh uninstall   # stop and remove
-#   ./install-ollama-dsh-login.sh status      # show loaded state, port, log
-#   ./install-ollama-dsh-login.sh restart     # stop then start now
+#   ./ollama-dsh-login.sh install     # install and load (default)
+#   ./ollama-dsh-login.sh uninstall   # stop and remove
+#   ./ollama-dsh-login.sh status      # show loaded state, port, log
+#   ./ollama-dsh-login.sh restart     # stop then start now
+#   ./ollama-dsh-login.sh open        # authenticate a browser window
 #
 # The agent shows up in System Settings > General > Login Items & Extensions
 # under "Allow in the Background" as com.robe.ollama-launch-dsh.
@@ -25,28 +26,36 @@ DST_PLIST="$AGENT_DIR/$LABEL.plist"
 LOG_FILE="$HOME/Library/Logs/ollama-launch-dsh.log"
 DOMAIN="gui/$(id -u)"
 
+# Keep these in step with the wrapper's defaults.
+DSH_WEB_HOST="${DSH_WEB_HOST:-127.0.0.1}"
+DSH_WEB_PORT="${DSH_WEB_PORT:-3080}"
+# Name of the Chrome App shortcut to hand the authenticated URL to.
+DSH_APP_NAME="${DSH_APP_NAME:-DeepSeek Harness}"
+
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 info() { printf '%s\n' "$*"; }
 
 usage() {
   cat <<'USAGE'
-Usage: install-ollama-dsh-login.sh [command]
+Usage: ollama-dsh-login.sh [command]
 
-Installs or removes a silent login item (LaunchAgent) that runs
-`ollama launch dsh` at login, with no Terminal window.
+Manages the silent login item (LaunchAgent) that runs `ollama launch dsh` at
+login, with no Terminal window.
 
 Commands:
   install      Install the LaunchAgent and load it (default)
   uninstall    Unload the LaunchAgent and remove its plist
   status       Show launchd state, DSH web port, and the last log lines
   restart      Unload and load the LaunchAgent again
+  open         Open the current authenticated URL in the Chrome App, for when
+               the GUI answers "dsh web authentication required"
   -h, --help   Show this help
 USAGE
 }
 
 check_environment() {
   [ "$(uname -s)" = Darwin ] || die "this installer targets macOS"
-  for dependency in cp launchctl plutil nc; do
+  for dependency in cp launchctl plutil nc open; do
     command -v "$dependency" >/dev/null 2>&1 \
       || die "required command not found: $dependency"
   done
@@ -62,6 +71,26 @@ stop_agent() {
   launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null
   launchctl bootout "$DOMAIN" "$DST_PLIST" 2>/dev/null
   return 0
+}
+
+# The authenticated URL appears in the log as the `dsh web:` readiness line.
+latest_url() {
+  local pattern
+  pattern="http://${DSH_WEB_HOST//./\\.}:${DSH_WEB_PORT}/\\?token=[A-Za-z0-9_-]+"
+  grep -oE "$pattern" "$LOG_FILE" 2>/dev/null | tail -1
+}
+
+# Print the Chrome App shortcut for DSH, if one is installed.
+find_dsh_app() {
+  local candidate
+  for candidate in "$HOME/Applications/Chrome Apps.localized/$DSH_APP_NAME.app" \
+                   "/Applications/Chrome Apps.localized/$DSH_APP_NAME.app"; do
+    if [ -d "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
 }
 
 cmd_install() {
@@ -105,9 +134,9 @@ cmd_status() {
   launchctl print "$DOMAIN/$LABEL" 2>&1 | grep -E \
     '^[[:space:]]*(state|pid|last exit code|program|path) =' || info "not loaded"
   info ""
-  info "== DSH web port 3080 =="
-  if nc -z 127.0.0.1 3080 >/dev/null 2>&1; then
-    info "listening (http://127.0.0.1:3080)"
+  info "== DSH web port $DSH_WEB_PORT =="
+  if nc -z "$DSH_WEB_HOST" "$DSH_WEB_PORT" >/dev/null 2>&1; then
+    info "listening (http://$DSH_WEB_HOST:$DSH_WEB_PORT)"
   else
     info "not listening"
   fi
@@ -128,11 +157,43 @@ cmd_restart() {
   info "Restarted $LABEL"
 }
 
+# Hand the current per-process authenticated URL to a browser. The cookie it
+# grants lasts 30 days, so this is only needed after the cookie expires, after
+# cookies are cleared, or when an open window kept its old connection state.
+cmd_open() {
+  check_environment
+  nc -z "$DSH_WEB_HOST" "$DSH_WEB_PORT" >/dev/null 2>&1 \
+    || die "nothing is listening on $DSH_WEB_HOST:$DSH_WEB_PORT; start it with: $0 restart"
+
+  local url app
+  url="$(latest_url)"
+  [ -n "$url" ] || die "no authenticated URL in $LOG_FILE; restart DSH web with: $0 restart"
+
+  info "Authenticated URL:"
+  info "  $url"
+
+  app="$(find_dsh_app)"
+  if [ -n "$app" ]; then
+    info "  opening in: $app"
+    if ! open -a "$app" "$url"; then
+      info "  the app refused the URL; trying the default browser"
+      open "$url" || die "could not open $url"
+    fi
+  else
+    info "  no Chrome App shortcut found; opening in the default browser"
+    open "$url" || die "could not open $url"
+  fi
+
+  info ""
+  info "If the window still asks for authentication, quit it and run this again."
+}
+
 case "${1:-install}" in
   install)    cmd_install ;;
   uninstall)  cmd_uninstall ;;
   status)     cmd_status ;;
   restart)    cmd_restart ;;
+  open)       cmd_open ;;
   -h|--help)  usage ;;
   *)          usage >&2; die "unknown command: $1" ;;
 esac
