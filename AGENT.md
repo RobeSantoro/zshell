@@ -14,6 +14,8 @@ These instructions apply to the entire project directory.
 - `luma2alpha.sh`: alpha channel compositing with ImageMagick.
 - `flatpdf.sh`: PDF rasterization and recompression; it is the only Zsh script.
 - `prepend.sh`: destructive in-place rename by adding a prefix.
+- `ollama-launch-dsh.sh`: starts `ollama launch dsh` with no Terminal window; it is the program the LaunchAgent runs, and exists to supply the fnm `PATH` and a duplicate-server guard.
+- `install-ollama-dsh-login.sh`: installs or removes the LaunchAgent `com.robe.ollama-launch-dsh.plist`, which is kept in the repository as its template.
 - `README.md`: user documentation and dependency overview.
 
 ## Working rules
@@ -50,7 +52,7 @@ These instructions apply to the entire project directory.
 After every change, run at least:
 
 ```bash
-bash -n flac2mp3.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh png2webp.sh prepend.sh
+bash -n flac2mp3.sh install-ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh
 zsh -n flatpdf.sh
 git diff --check
 ```

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Runs `ollama launch dsh` at login with no Terminal window.
+	     Installed as ~/Library/LaunchAgents/com.robe.ollama-launch-dsh.plist
+	     by install-ollama-dsh-login.sh. -->
+	<key>Label</key>
+	<string>com.robe.ollama-launch-dsh</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/robe/CODE/zshell/ollama-launch-dsh.sh</string>
+	</array>
+
+	<!-- Fallback PATH for anything the wrapper does not fix up itself.
+	     The wrapper prepends the fnm node bin (where dsh lives). -->
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/Users/robe/.local/share/fnm/aliases/default/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+
+	<!-- DSH treats its working directory as the workspace. -->
+	<key>WorkingDirectory</key>
+	<string>/Users/robe</string>
+
+	<!-- Start as soon as the user logs in. -->
+	<key>RunAtLoad</key>
+	<true/>
+
+	<!-- Restart only after an unsuccessful exit, so a crash recovers but a
+	     deliberate stop (launchctl bootout) stays stopped. The wrapper exits 0
+	     when DSH web is already listening, which therefore does not loop. -->
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+
+	<!-- Only in a graphical login session, never over SSH. -->
+	<key>LimitLoadToSessionType</key>
+	<string>Aqua</string>
+
+	<key>StandardOutPath</key>
+	<string>/Users/robe/Library/Logs/ollama-launch-dsh.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/robe/Library/Logs/ollama-launch-dsh.log</string>
+</dict>
+</plist>
