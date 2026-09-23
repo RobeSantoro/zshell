@@ -84,13 +84,27 @@ fi
 # This script is part of the zshell repository: cloning it here provides the
 # helper scripts it runs later and the directory added to PATH at the end.
 ZSHELL_DIR="$HOME/CODE/zshell"
-if [[ ! -d "$ZSHELL_DIR" ]]; then
+# Physical directory of this script. A run from inside the checkout must not
+# clone or pull the very working tree it is running from, so both paths are
+# resolved with pwd -P and the comparison cannot be defeated by symbolic links.
+# When the script is piped into bash, BASH_SOURCE is empty and "." is used.
+setup_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-.}")" && pwd -P)"
+zshell_dir_found="$(cd -- "$ZSHELL_DIR" 2>/dev/null && pwd -P)"
+if [[ -n "$zshell_dir_found" && "$setup_dir" == "$zshell_dir_found" ]]; then
+  printf 'Running from the zshell checkout in %s: skipping clone and update.\n' "$ZSHELL_DIR"
+elif [[ ! -d "$ZSHELL_DIR" ]]; then
   printf 'Cloning the zshell repository into %s...\n' "$ZSHELL_DIR"
   mkdir -p "$(dirname "$ZSHELL_DIR")"
   git clone https://github.com/RobeSantoro/zshell.git "$ZSHELL_DIR"
+elif ! git -C "$ZSHELL_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+  printf '%s\n' "$ZSHELL_DIR exists but is not a Git checkout; leaving it untouched." >&2
 else
   printf 'zshell repository already present in %s. Updating...\n' "$ZSHELL_DIR"
-  cd "$ZSHELL_DIR" && git pull
+  # --ff-only keeps a restart from creating an unexpected merge commit; a
+  # failure leaves the current checkout in place and does not stop the setup.
+  if ! git -C "$ZSHELL_DIR" pull --ff-only; then
+    printf 'Could not update the zshell repository; using the current checkout.\n' >&2
+  fi
 fi
 
 # Ollama: official installation, separate from Homebrew.

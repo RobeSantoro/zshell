@@ -52,6 +52,12 @@ Piping the script into `bash` also works; in that case the single interactive
 question, the `ollama launch dsh` login item, is asked on the controlling
 terminal so it is not silently skipped.
 
+The script clones this repository into `~/CODE/zshell` when the directory is
+missing, and updates an existing checkout with `git pull --ff-only`. When run
+from inside that checkout it skips both the clone and the update, so a local
+working tree is never changed behind your back. A `~/CODE/zshell` that exists
+but is not a Git checkout is reported and left untouched.
+
 The script is additive and idempotent. It appends only the lines it manages to
 `~/.zprofile` and `~/.zshrc`, skips the lines that are already present, and
 copies a timestamped backup next to each file before rewriting it. Unrelated
