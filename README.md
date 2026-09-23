@@ -1,6 +1,6 @@
 # zshell
 
-A collection of small command-line scripts for macOS dedicated to converting audio, images, and PDFs, plus simple file-name operations and a launch-at-login helper for DeepSeek Harness.
+A collection of small command-line scripts for macOS dedicated to converting audio, images, and PDFs, plus simple file-name operations, a launch-at-login helper for DeepSeek Harness, and a bootstrap script for a new Apple Silicon machine.
 
 The scripts are standalone: there is no build process, package manager, or global project configuration. Every utility can be run directly from the repository directory.
 
@@ -17,6 +17,7 @@ The scripts are standalone: there is no build process, package manager, or globa
 | `prepend.sh` | Adds a prefix to the names of multiple files | Files renamed in place | Standard macOS utilities |
 | `ollama-launch-dsh.sh` | Starts `ollama launch dsh` (DeepSeek Harness web) with no Terminal window; it is the program the LaunchAgent runs | - | Ollama, `dsh` from fnm |
 | `ollama-dsh-login.sh` | Manages the launch-at-login item for DeepSeek Harness: install, uninstall, status, restart, open | - | Standard macOS utilities |
+| `setup.sh` | Provisions a new Apple Silicon Mac: Homebrew, casks, formulae, Node, zsh profile blocks, launcher configuration | - | Homebrew, network |
 
 ## Installation
 
@@ -31,6 +32,31 @@ The scripts in the repository are already executable. If they are not:
 ```bash
 chmod +x ./*.sh
 ```
+
+## New machine setup
+
+`setup.sh` provisions a fresh Apple Silicon Mac. It installs Homebrew when
+missing, a fixed list of casks and formulae, Node through `fnm`, and `pnpm`; it
+then writes the zsh login and profile blocks, the Ghostty font, the Raycast
+`btop` launcher, four personal aliases, the `gb` function, and the global Git
+identity. It requires macOS on Apple Silicon and refuses to run as `root`.
+
+Run it as a normal user:
+
+```bash
+curl -fsSL -o /tmp/zshell-setup.sh https://raw.githubusercontent.com/RobeSantoro/zshell/main/setup.sh
+/bin/bash /tmp/zshell-setup.sh
+```
+
+Piping the script into `bash` also works; in that case the single interactive
+question, the `ollama launch dsh` login item, is asked on the controlling
+terminal so it is not silently skipped.
+
+The script is additive and idempotent. It appends only the lines it manages to
+`~/.zprofile` and `~/.zshrc`, skips the lines that are already present, and
+copies a timestamped backup next to each file before rewriting it. Unrelated
+settings, including `~/.config.omp.json`, are left untouched. Re-running it
+after an edit is the intended way to pick up a new cask or formula.
 
 ## Audio conversion
 
@@ -198,13 +224,14 @@ interchangeable.
 - `flac2mp3.sh` and `mkv2mp3.sh` protect existing outputs unless `--force` is used explicitly.
 - The WebP scripts, `luma2alpha.sh`, `flatpdf.sh`, and `prepend.sh` do not implement the same full protection: check the destination names in advance.
 - Enclose paths containing spaces in quotes.
+- `setup.sh` installs software and rewrites shell profiles. It backs up before rewriting and leaves unrelated settings alone, but review the cask and formula lists before running it.
 
 ## Quick verification
 
 There is no automated test suite. You can at least verify the syntax with:
 
 ```bash
-bash -n flac2mp3.sh ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh
+bash -n flac2mp3.sh ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh setup.sh
 zsh -n flatpdf.sh
 ```
 

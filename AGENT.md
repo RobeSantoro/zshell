@@ -2,7 +2,7 @@
 
 ## Repository scope
 
-This repository contains standalone shell utilities for macOS. There is no build system, no vendored dependency, and no automated test. Changes must stay small, readable, and consistent with the purpose of the individual script.
+This repository contains standalone shell utilities and setup scripts for macOS. There is no build system, no vendored dependency, and no automated test. Changes must stay small, readable, and consistent with the purpose of the individual script.
 
 These instructions apply to the entire project directory.
 
@@ -16,6 +16,7 @@ These instructions apply to the entire project directory.
 - `prepend.sh`: destructive in-place rename by adding a prefix.
 - `ollama-launch-dsh.sh`: starts `ollama launch dsh` with no Terminal window; it is the program the LaunchAgent runs, and exists to supply the fnm `PATH` and a duplicate-server guard.
 - `ollama-dsh-login.sh`: manages the LaunchAgent `com.robe.ollama-launch-dsh.plist` (install, uninstall, status, restart, open), kept in the repository as its template.
+- `setup.sh`: bootstrap for a new Apple Silicon Mac: Homebrew, casks, formulae, Node through `fnm`, zsh profile blocks, the Ghostty font, the Raycast `btop` launcher, aliases, the `gb` function, and the global Git identity.
 - `README.md`: user documentation and dependency overview.
 
 ## Working rules
@@ -38,6 +39,7 @@ These instructions apply to the entire project directory.
 - An error, a skipped file, or an input with no audio track must not cause deletion of the source.
 - For destructive operations on real files, use temporary fixtures and not user content.
 - `flatpdf.sh` rasterizes the document: do not describe the result as semantically equivalent to the original.
+- `setup.sh` installs software and rewrites `~/.zprofile` and `~/.zshrc`: those edits must stay additive, idempotent, and preceded by a timestamped backup, and must not overwrite unrelated settings.
 
 ## CLI conventions
 
@@ -52,7 +54,7 @@ These instructions apply to the entire project directory.
 After every change, run at least:
 
 ```bash
-bash -n flac2mp3.sh ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh
+bash -n flac2mp3.sh ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh setup.sh
 zsh -n flatpdf.sh
 git diff --check
 ```
