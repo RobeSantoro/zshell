@@ -17,6 +17,7 @@ The scripts are standalone: there is no build process, package manager, or globa
 | `prepend.sh` | Adds a prefix to the names of multiple files | Files renamed in place | Standard macOS utilities |
 | `ollama-launch-dsh.sh` | Starts `ollama launch dsh` (DeepSeek Harness web) with no Terminal window; it is the program the LaunchAgent runs | - | Ollama, `dsh` from fnm |
 | `ollama-dsh-login.sh` | Manages the launch-at-login item for DeepSeek Harness: install, uninstall, status, restart, open | - | Standard macOS utilities |
+| `kill-dsh.sh` | Stops DeepSeek Harness and its server: boots the LaunchAgent out, then frees port 3080 | - | Standard macOS utilities |
 | `setup.sh` | Provisions a new Apple Silicon Mac: Homebrew, casks, formulae, Node, zsh profile blocks, launcher configuration | - | Homebrew, network |
 
 ## Installation
@@ -38,9 +39,9 @@ chmod +x ./*.sh
 `setup.sh` provisions a fresh Apple Silicon Mac. It installs Homebrew when
 missing, a fixed list of casks and formulae, Node through `fnm`, and `pnpm`; it
 then writes the zsh login and profile blocks, the Ghostty font, the Raycast
-`btop` and `Hermes` launchers, four personal aliases, the `gb` function, and the
-global Git identity. It requires macOS on Apple Silicon and refuses to run as
-`root`.
+`btop`, `Hermes`, and `kill-dsh` launchers, four personal aliases, the `gb`
+function, and the global Git identity. It requires macOS on Apple Silicon and
+refuses to run as `root`.
 
 Run it as a normal user:
 
@@ -225,6 +226,24 @@ shortcut (falling back to the default browser). Cookies belong to one browser
 profile, so the shortcut and the browser that authenticates are not
 interchangeable.
 
+## Stopping DeepSeek Harness
+
+`kill-dsh.sh` is the counterpart of the login item: it boots
+`com.robe.ollama-launch-dsh` out of launchd and then terminates whatever still
+listens on port 3080, waiting two seconds before it escalates to `kill -9`. A
+job that is not loaded and a port that is already free are both reported and
+ignored, so the script is safe to run at any time.
+
+```bash
+./kill-dsh.sh
+```
+
+Because the whole run lasts a second or two, `setup.sh` installs a Raycast
+launcher named `kill-dsh` as well: it opens a Ghostty window that runs the
+script and then waits for Enter, so the log of what was stopped stays on screen.
+DSH normally runs with no terminal of its own, and that window is where its
+output can actually be read.
+
 ## Safety and overwriting
 
 - Use `--delete-original` only when you really want to remove the audio or video sources.
@@ -238,7 +257,7 @@ interchangeable.
 There is no automated test suite. You can at least verify the syntax with:
 
 ```bash
-bash -n flac2mp3.sh ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh setup.sh
+bash -n flac2mp3.sh kill-dsh.sh ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh setup.sh
 zsh -n flatpdf.sh
 ```
 

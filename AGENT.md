@@ -16,7 +16,8 @@ These instructions apply to the entire project directory.
 - `prepend.sh`: destructive in-place rename by adding a prefix.
 - `ollama-launch-dsh.sh`: starts `ollama launch dsh` with no Terminal window; it is the program the LaunchAgent runs, and exists to supply the fnm `PATH` and a duplicate-server guard.
 - `ollama-dsh-login.sh`: manages the LaunchAgent `com.robe.ollama-launch-dsh.plist` (install, uninstall, status, restart, open), kept in the repository as its template.
-- `setup.sh`: bootstrap for a new Apple Silicon Mac: Homebrew, casks, formulae, Node through `fnm`, zsh profile blocks, the Ghostty font, the Raycast `btop` and `Hermes` launchers, aliases, the `gb` function, and the global Git identity.
+- `kill-dsh.sh`: stops DSH and its server: it boots the LaunchAgent out, then terminates whatever still listens on port 3080. It reverses `ollama-dsh-login.sh install` and is safe to run when nothing is listening.
+- `setup.sh`: bootstrap for a new Apple Silicon Mac: Homebrew, casks, formulae, Node through `fnm`, zsh profile blocks, the Ghostty font, the Raycast `btop`, `Hermes`, and `kill-dsh` launchers, aliases, the `gb` function, and the global Git identity.
 - `README.md`: user documentation and dependency overview.
 
 ## Working rules
@@ -54,7 +55,7 @@ These instructions apply to the entire project directory.
 After every change, run at least:
 
 ```bash
-bash -n flac2mp3.sh ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh setup.sh
+bash -n flac2mp3.sh kill-dsh.sh ollama-dsh-login.sh jpg2webp.sh luma2alpha.sh mkv2mp3.sh ollama-launch-dsh.sh png2webp.sh prepend.sh setup.sh
 zsh -n flatpdf.sh
 git diff --check
 ```

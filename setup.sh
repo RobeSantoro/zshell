@@ -360,6 +360,50 @@ chmod +x "$hermes_app/Contents/MacOS/Hermes"
 register_launcher "$hermes_app"
 printf 'Raycast launcher ready: type "Hermes" in Raycast and press Enter.\n'
 
+# kill-dsh: stops the DSH agent and its server. The run lasts a second or two,
+# so the window is held open until Enter: the log of what was stopped is the
+# reason for the launcher, and a window closing on its own would take it away
+# before it could be read.
+killdsh_app="$(create_launcher_app kill-dsh local.kill-dsh.launcher)"
+cat > "$killdsh_app/Contents/MacOS/kill-dsh" <<'KILLDSH_LAUNCHER'
+#!/bin/bash
+# Opens a new Ghostty window that stops DSH. The bundle executable only opens
+# the window; kill-dsh-run, its neighbour, is the script that window runs.
+set -u
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+
+# Checked before the window opens, so a missing script is reported as an alert
+# rather than as an error inside a window that closes immediately afterwards.
+kill_dsh="$HOME/CODE/zshell/kill-dsh.sh"
+if [[ ! -r "$kill_dsh" ]]; then
+  osascript -e 'display alert "kill-dsh.sh was not found" message "Clone the zshell repository into ~/CODE/zshell to use this launcher."' >/dev/null 2>&1
+  exit 1
+fi
+
+if ! open -na Ghostty.app --args -e "$(dirname "$0")/kill-dsh-run"; then
+  osascript -e 'display alert "Ghostty was not found" message "Install it with: brew install --cask ghostty"' >/dev/null 2>&1
+  exit 1
+fi
+KILLDSH_LAUNCHER
+cat > "$killdsh_app/Contents/MacOS/kill-dsh-run" <<'KILLDSH_RUNNER'
+#!/bin/bash
+# The part of the launcher that runs inside the Ghostty window: it stops DSH
+# where a terminal exists, then waits, so the log stays on screen until Enter.
+set -u
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+
+/bin/bash "$HOME/CODE/zshell/kill-dsh.sh"
+
+printf '\nPress Enter to close this window... '
+read -r _ || true
+KILLDSH_RUNNER
+chmod +x "$killdsh_app/Contents/MacOS/kill-dsh" \
+  "$killdsh_app/Contents/MacOS/kill-dsh-run"
+register_launcher "$killdsh_app"
+printf 'Raycast launcher ready: type "kill-dsh" in Raycast and press Enter.\n'
+
 # Restores only the four personal aliases in the requested profile.
 alias_profile="${ZDOTDIR:-$HOME}/.zshrc"
 touch "$alias_profile"
