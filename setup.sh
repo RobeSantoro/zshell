@@ -57,6 +57,8 @@ casks=(
   losslesscut
   qlvideo
   tailscale-app
+  blender
+  telegram
 )
 for package in "${casks[@]}"; do
   if brew list --cask "$package" >/dev/null 2>&1; then
@@ -67,7 +69,7 @@ for package in "${casks[@]}"; do
 done
 
 # Terminal tools: keeps the formulas requested in the conversation.
-for package in syncthing codex oh-my-posh fnm tree btop; do
+for package in syncthing codex oh-my-posh fnm tree btop gh; do
   if brew list --formula "$package" >/dev/null 2>&1; then
     printf 'Already installed: %s\n' "$package"
   else
@@ -224,14 +226,29 @@ fi
 rm -f "$ghostty_tmp"
 printf '%s\n' 'To apply prompts and fonts, restart Ghostty or open a new tab.'
 
-# Raycast launcher for btop: typing "btop" in Raycast opens a new Ghostty window
-# already running btop. A minimal application bundle is used because Raycast
-# indexes the applications in ~/Applications by itself; a Raycast Script Command
-# would instead need a manual "Add Script Directory" step once per machine.
-btop_app="$HOME/Applications/btop.app"
-if command -v btop >/dev/null 2>&1; then
-  mkdir -p "$btop_app/Contents/MacOS"
-  cat > "$btop_app/Contents/Info.plist" <<'BTOP_PLIST'
+# Raycast launchers: typing the application name in Raycast opens the tool. A
+# minimal application bundle is used because Raycast indexes the applications in
+# ~/Applications by itself; a Raycast Script Command would instead need a manual
+# "Add Script Directory" step once per machine.
+lsregister='/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister'
+
+# Registers a bundle with Launch Services so Raycast and Spotlight find it at
+# once, without waiting for a new login or a manual reindex.
+register_launcher() {
+  local app="$1"
+  if [[ -x "$lsregister" ]]; then
+    "$lsregister" -f "$app"
+  fi
+}
+
+# Creates ~/Applications/<name>.app with the given bundle identifier and prints
+# its path. The bundle executable is Contents/MacOS/<name>: the caller writes it
+# and then calls register_launcher.
+create_launcher_app() {
+  local name="$1" bundle_id="$2"
+  local app="$HOME/Applications/$name.app"
+  mkdir -p "$app/Contents/MacOS"
+  cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -239,15 +256,15 @@ if command -v btop >/dev/null 2>&1; then
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>btop</string>
+	<string>$name</string>
 	<key>CFBundleExecutable</key>
-	<string>btop</string>
+	<string>$name</string>
 	<key>CFBundleIdentifier</key>
-	<string>local.btop.launcher</string>
+	<string>$bundle_id</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>btop</string>
+	<string>$name</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -260,7 +277,13 @@ if command -v btop >/dev/null 2>&1; then
 	<true/>
 </dict>
 </plist>
-BTOP_PLIST
+PLIST
+  printf '%s\n' "$app"
+}
+
+# btop: a Ghostty window that is already running btop.
+if command -v btop >/dev/null 2>&1; then
+  btop_app="$(create_launcher_app btop local.btop.launcher)"
   cat > "$btop_app/Contents/MacOS/btop" <<'BTOP_LAUNCHER'
 #!/bin/bash
 # Opens a new Ghostty window running btop.
@@ -282,16 +305,60 @@ if ! open -na Ghostty.app --args -e "$(command -v btop)"; then
 fi
 BTOP_LAUNCHER
   chmod +x "$btop_app/Contents/MacOS/btop"
-  # Registers the bundle with Launch Services so Raycast and Spotlight find it
-  # immediately, without waiting for a new login or a manual reindex.
-  lsregister='/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister'
-  if [[ -x "$lsregister" ]]; then
-    "$lsregister" -f "$btop_app"
-  fi
+  register_launcher "$btop_app"
   printf 'Raycast launcher ready: type "btop" in Raycast and press Enter.\n'
 else
   printf '%s\n' 'btop not found: skipping the Raycast launcher.' >&2
 fi
+
+# Hermes: the agent starts in a silent terminal, that is with no Terminal window
+# and no Dock icon, and Raycast returns immediately instead of waiting for it.
+hermes_app="$(create_launcher_app Hermes local.hermes.launcher)"
+cat > "$hermes_app/Contents/MacOS/Hermes" <<'HERMES_LAUNCHER'
+#!/bin/bash
+# Starts the Hermes agent, `ollama launch hermes-desktop`, in a silent terminal:
+# the command is detached from this bundle, so neither a Terminal window nor a
+# Dock icon stays behind, and its output is appended to a log file instead.
+# Pressing this again while the agent is already up does nothing, so a second
+# instance cannot fight with the first one over the same state.
+set -u
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
+
+hermes_model='gemma4:26b'
+hermes_log="$HOME/Library/Logs/hermes-agent.log"
+
+# Anchored at the start of the command line, so a process that merely mentions
+# the command - a shell running this launcher, an editor, a log viewer - is not
+# mistaken for a running agent. Two forms must be recognised: `ollama launch`
+# while it starts up, and the packaged Hermes Desktop application it hands off
+# to, which outlives it and is what stays up. This is the only reason the
+# launcher stays silent when it has nothing to do.
+if pgrep -f '^[^ ]*ollama launch hermes-desktop' >/dev/null 2>&1 ||
+   pgrep -f '^[^ ]*hermes-agent/apps/desktop/release/' >/dev/null 2>&1; then
+  printf '%s [hermes-launcher] already running; nothing to start\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S')" >> "$hermes_log"
+  exit 0
+fi
+
+if ! command -v ollama >/dev/null 2>&1; then
+  osascript -e 'display alert "Ollama was not found" message "Install it from https://ollama.com/download"' >/dev/null 2>&1
+  exit 1
+fi
+
+mkdir -p "$(dirname "$hermes_log")"
+printf '%s [hermes-launcher] starting: ollama launch hermes-desktop --model %s -y\n' \
+  "$(date '+%Y-%m-%d %H:%M:%S')" "$hermes_model" >> "$hermes_log"
+
+# -y answers confirmation prompts, because a detached launch has no terminal to
+# answer them on; </dev/null keeps a prompt from reading this script's stdin.
+# nohup plus the immediate exit keep the agent alive after the bundle is gone.
+nohup ollama launch hermes-desktop --model "$hermes_model" -y </dev/null >>"$hermes_log" 2>&1 &
+exit 0
+HERMES_LAUNCHER
+chmod +x "$hermes_app/Contents/MacOS/Hermes"
+register_launcher "$hermes_app"
+printf 'Raycast launcher ready: type "Hermes" in Raycast and press Enter.\n'
 
 # Restores only the four personal aliases in the requested profile.
 alias_profile="${ZDOTDIR:-$HOME}/.zshrc"

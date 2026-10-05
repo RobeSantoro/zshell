@@ -38,8 +38,9 @@ chmod +x ./*.sh
 `setup.sh` provisions a fresh Apple Silicon Mac. It installs Homebrew when
 missing, a fixed list of casks and formulae, Node through `fnm`, and `pnpm`; it
 then writes the zsh login and profile blocks, the Ghostty font, the Raycast
-`btop` launcher, four personal aliases, the `gb` function, and the global Git
-identity. It requires macOS on Apple Silicon and refuses to run as `root`.
+`btop` and `Hermes` launchers, four personal aliases, the `gb` function, and the
+global Git identity. It requires macOS on Apple Silicon and refuses to run as
+`root`.
 
 Run it as a normal user:
 

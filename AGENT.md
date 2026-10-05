@@ -16,7 +16,7 @@ These instructions apply to the entire project directory.
 - `prepend.sh`: destructive in-place rename by adding a prefix.
 - `ollama-launch-dsh.sh`: starts `ollama launch dsh` with no Terminal window; it is the program the LaunchAgent runs, and exists to supply the fnm `PATH` and a duplicate-server guard.
 - `ollama-dsh-login.sh`: manages the LaunchAgent `com.robe.ollama-launch-dsh.plist` (install, uninstall, status, restart, open), kept in the repository as its template.
-- `setup.sh`: bootstrap for a new Apple Silicon Mac: Homebrew, casks, formulae, Node through `fnm`, zsh profile blocks, the Ghostty font, the Raycast `btop` launcher, aliases, the `gb` function, and the global Git identity.
+- `setup.sh`: bootstrap for a new Apple Silicon Mac: Homebrew, casks, formulae, Node through `fnm`, zsh profile blocks, the Ghostty font, the Raycast `btop` and `Hermes` launchers, aliases, the `gb` function, and the global Git identity.
 - `README.md`: user documentation and dependency overview.
 
 ## Working rules
